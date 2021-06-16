@@ -1,0 +1,42 @@
+name: CI\CD - US
+on:
+  workflow_dispatch:
+  push:
+    branches: [ PROD ]
+jobs:
+  ci-cd-us:
+    runs-on: ubuntu-latest
+
+    env:
+      BRANCH_NAME: PROD
+      DEPLOYMENT_NAME: ga-bq-synchronizer-us
+      DEPLOYMENT_REGION: us-central1-a
+      FUNCTION_RUNTIME: java11
+      TRIGGER_TOPIC: ga-bq-sync-us
+      ENTRY_POINT: com.pomvom.Application
+      MAX_INSTANCES: 1
+      ENV_FILE_PATH: ./src/main/resources/environment/env-us.yaml
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.BRANCH_NAME }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@master
+        with:
+          service_account_key: ${{ secrets.GCF_SA_KEY }}
+          export_default_credentials: true
+
+      - name: Deploy Cloud Function
+        run: |-
+          gcloud functions deploy ${{ env.DEPLOYMENT_NAME }} \
+          --region=${{ env.DEPLOYMENT_REGION }} \
+          --runtime=${{ env.FUNCTION_RUNTIME }}  \
+          --trigger-topic=${{ env.TRIGGER_TOPIC }} \
+          --entry-point=${{ env.ENTRY_POINT }} \
+          --max-instances=${{ env.MAX_INSTANCES }} \
+          --env-vars-file=${{ env.ENV_FILE_PATH }} \
+          --project=${{ secrets.GCP_PROJECT_ID }} \
+          --service-account=${{ secrets.SERVICE_ACCOUNT_NAME }}
